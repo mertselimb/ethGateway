@@ -17,15 +17,34 @@ const unexpectedError = { error: "Unexpected error." };
 
 router.post("/fetch", async (req, res, next) => {
   if (req.body.startBlock) {
-    const startBlock = await web3.eth.getBlock(req.body.startBlock);
-    const transactions = [];
-    for (const transactionHash of startBlock.transactions) {
-      const transaction = await web3.eth.getTransaction(transactionHash);
-      transactions.push({ ...transaction });
-    }
-    res.json(transactions);
+    const endBlock = req.body.endBlock
+      ? req.body.endBlock
+      : await web3.eth.getBlockNumber();
+
+    web3.eth.getBlock(req.body.startBlock, (err1, startBlock) => {
+      if (err1) {
+        console.error(err);
+        res.json(unexpectedError);
+      } else {
+        web3.eth.getBlock(req.body.startBlock, async (err2, endBlock) => {
+          if (err2) {
+            console.console.error(err);
+            res.json(unexpectedError);
+          } else {
+            const transactions = [];
+            for (const transactionHash of startBlock.transactions) {
+              const transaction = await web3.eth.getTransaction(
+                transactionHash
+              );
+              transactions.push({ ...transaction });
+            }
+            res.json(transactions);
+          }
+        });
+      }
+    });
   } else {
-    res.send("Wrong format");
+    res.json({ error: "Wrong format" });
   }
 });
 
