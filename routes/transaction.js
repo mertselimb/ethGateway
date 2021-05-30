@@ -13,6 +13,8 @@ const address2 = "0x1ce509bBdc65a63C2f18fa96D16Ca07f483b7ee8";
 const privateKey2 =
   "0x9e12131cd0e5a2c3bdf80eb86f428d02a1b4e4042a61c089ef632ef8faeffd4b";
 
+const unexpectedError = { error: "Unexpected error." };
+
 router.post("/fetch", async (req, res, next) => {
   if (req.body.startBlock) {
     const startBlock = await web3.eth.getBlock(req.body.startBlock);
@@ -31,29 +33,39 @@ router.post("/send", async (req, res, next) => {
   const sender = await web3.eth.accounts.privateKeyToAccount(
     req.body.privateKey
   );
-  const count = await web3.eth.getTransactionCount(sender.address);
+  if (sender.address) {
+    web3.eth.getTransactionCount(sender.address, (err, count) => {
+      if (err) {
+        console.error(err);
+        res.json(unexpectedError);
+      } else {
+        const TxObject = {
+          nonce: web3.utils.toHex(count),
+          to: req.body.address,
+          value: web3.utils.toHex(req.body.amount),
+          gasLimit: web3.utils.toHex(21000),
+          gasPrice: web3.utils.toHex(web3.utils.toWei("10", "gwei")),
+        };
+        const tx = new Tx(TxObject, { chain: "ropsten" });
+        tx.sign(Buffer.from(req.body.privateKey, "hex"));
 
-  const TxObject = {
-    nonce: web3.utils.toHex(count),
-    to: req.body.address,
-    value: web3.utils.toHex(req.body.amount),
-    gasLimit: web3.utils.toHex(21000),
-    gasPrice: web3.utils.toHex(web3.utils.toWei("10", "gwei")),
-  };
-  const tx = new Tx(TxObject, { chain: "ropsten" });
-  tx.sign(Buffer.from(req.body.privateKey, "hex"));
+        const serializedTransaction = tx.serialize();
+        const raw = "0x" + serializedTransaction.toString("hex");
 
-  const serializedTransaction = tx.serialize();
-  const raw = "0x" + serializedTransaction.toString("hex");
-
-  web3.eth.sendSignedTransaction(raw, (err, txHash) => {
-    if (err) {
-      console.log(err);
-      res.send(err);
-    } else {
-      res.json({txHash});
-    }
-  });
+        web3.eth.sendSignedTransaction(raw, (err, txHash) => {
+          if (err) {
+            console.error(err);
+            res.json(unexpectedError);
+          } else {
+            res.json({ txHash });
+          }
+        });
+      }
+    });
+  } else {
+    console.error(sender);
+    res.json(unexpectedError);
+  }
 });
 
 module.exports = router;
