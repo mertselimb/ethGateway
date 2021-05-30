@@ -102,7 +102,6 @@ router.post("/send", async (req, res, next) => {
     } else if (!addressCheck) {
       res.json({ error: "Incorrect address" });
     } else {
-      console.error(sender);
       res.json(unexpectedError);
     }
   } else {
