@@ -33,10 +33,12 @@ router.post("/fetch", async (req, res, next) => {
           } else {
             const transactions = [];
             for (const transactionHash of startBlock.transactions) {
-              const transaction = await web3.eth.getTransaction(
-                transactionHash
-              );
-              transactions.push({ ...transaction });
+              if (endBlock.transactions.includes(transactionHash)) {
+                const transaction = await web3.eth.getTransaction(
+                  transactionHash
+                );
+                transactions.push({ ...transaction });
+              }
             }
             res.json(transactions);
           }
